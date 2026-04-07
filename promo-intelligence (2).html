@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promo Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0e0e10;
+  --surface: #18181b;
+  --surface-hover: #1f1f23;
+  --surface-raised: #232328;
+  --border: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --text: #fafaf9;
+  --text-muted: #a1a1aa;
+  --text-dim: #63636e;
+  --cream: #f5f0e8;
+  --accent: #c8a46e;
+  --accent-dim: rgba(200,164,110,0.15);
+  --green: #34d399;
+  --green-dim: rgba(52,211,153,0.12);
+  --red: #f87171;
+  --red-dim: rgba(248,113,113,0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.12);
+  --purple: #a78bfa;
+  --pink: #f472b6;
+  --amber: #fbbf24;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.container { max-width: 1280px; margin: 0 auto; padding: 2.5rem 2rem; }
+
+/* ── NAV ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 2rem; margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.logo { display: flex; align-items: baseline; gap: 10px; }
+.logo h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 26px; font-weight: 400; letter-spacing: -0.5px;
+  color: var(--cream);
+}
+.logo .tag {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--accent); font-weight: 600;
+}
+.topbar-right { display: flex; align-items: center; gap: 1.25rem; }
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-muted);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 6px 14px; border-radius: 100px;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); animation: pulse 2.5s ease infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+.btn {
+  font-family: 'Instrument Sans', sans-serif; font-size: 12px; font-weight: 500;
+  padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-hover); }
+
+/* ── FILTERS ── */
+.filters-row {
+  display: flex; gap: 10px; margin-bottom: 2rem; flex-wrap: wrap; align-items: center;
+}
+.filter-select {
+  padding: 7px 30px 7px 12px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: 'Instrument Sans', sans-serif;
+  font-size: 13px; cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='8' height='5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2363636e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  transition: border-color 0.15s;
+}
+.filter-select:hover { border-color: var(--border-hover); }
+.filter-select:focus { outline: none; border-color: var(--accent); }
+
+/* ── METRICS ── */
+.metrics-grid {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px; background: var(--border); border-radius: var(--radius-lg);
+  overflow: hidden; margin-bottom: 2.5rem;
+}
+.metric {
+  background: var(--surface); padding: 1.25rem 1.5rem;
+  transition: background 0.15s;
+}
+.metric:hover { background: var(--surface-hover); }
+.metric-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-dim); font-weight: 600; margin-bottom: 8px;
+}
+.metric-value {
+  font-family: 'JetBrains Mono', monospace; font-size: 32px;
+  font-weight: 500; color: var(--cream); letter-spacing: -1px;
+  line-height: 1;
+}
+.metric-sub { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+.metric-sub .up { color: var(--green); }
+.metric-sub .down { color: var(--red); }
+
+/* ── SECTIONS ── */
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.section-title {
+  font-family: 'Instrument Serif', serif; font-size: 20px;
+  font-weight: 400; color: var(--cream);
+}
+.section-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 3px 10px; border-radius: 100px;
+  background: var(--accent-dim); color: var(--accent); font-weight: 500;
+}
+
+/* ── ACTIVE PROMOS ── */
+.promo-grid { display: flex; flex-direction: column; gap: 2px; }
+.promo-card {
+  display: grid; grid-template-columns: 170px 120px 1fr 80px 140px;
+  align-items: center; gap: 16px;
+  padding: 14px 20px; background: var(--surface);
+  border-radius: var(--radius); transition: background 0.15s;
+}
+.promo-card:hover { background: var(--surface-hover); }
+.promo-brand { font-weight: 600; font-size: 14px; }
+.promo-tag {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px;
+  padding: 4px 10px; border-radius: 4px; font-weight: 600;
+  display: inline-block; width: fit-content;
+}
+.promo-discount { color: var(--text-muted); font-size: 13px; }
+.promo-duration {
+  font-family: 'JetBrains Mono', monospace; font-weight: 500;
+  font-size: 14px; text-align: center;
+}
+.promo-dates { font-size: 12px; color: var(--text-dim); text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+/* ── CHARTS ── */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2.5rem; }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+}
+.chart-card-title {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim); font-weight: 600; margin-bottom: 1.25rem;
+}
+.chart-container { position: relative; width: 100%; }
+.chart-legend {
+  display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px;
+  font-size: 11px; color: var(--text-muted);
+}
+.chart-legend span { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* ── TABLE ── */
+.data-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 13px;
+}
+.data-table thead th {
+  text-align: left; padding: 10px 16px; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-dim); font-weight: 600;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+}
+.data-table tbody td {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text-muted); transition: background 0.1s;
+}
+.data-table tbody tr:hover td { background: var(--surface-hover); color: var(--text); }
+.data-table .brand-cell { color: var(--text); font-weight: 500; }
+.data-table .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.live-badge {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--green); display: flex; align-items: center; gap: 4px;
+}
+.live-badge::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--green); display: inline-block;
+}
+.ended-badge { font-size: 11px; color: var(--text-dim); }
+.table-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  max-height: 520px; overflow-y: auto;
+}
+.table-wrap::-webkit-scrollbar { width: 6px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--surface); }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--surface-raised); border-radius: 3px; }
+
+/* ── LOADING ── */
+.loading-screen {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 60vh; gap: 16px;
+}
+.loader {
+  width: 24px; height: 24px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text-dim); }
+
+/* ── ERROR / FALLBACK ── */
+.fallback-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 2rem; max-width: 600px; margin: 4rem auto;
+}
+.fallback-card h3 { font-family: 'Instrument Serif', serif; font-size: 20px; color: var(--cream); margin-bottom: 8px; }
+.fallback-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.7; }
+.fallback-card code {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  background: var(--bg); padding: 3px 8px; border-radius: 4px; color: var(--accent);
+}
+.fallback-card textarea {
+  width: 100%; margin-top: 8px; padding: 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; resize: vertical; min-height: 100px;
+}
+.fallback-card textarea:focus { outline: none; border-color: var(--accent); }
+.fallback-card .btn { margin-top: 10px; background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.fallback-card .btn:hover { background: var(--accent); color: var(--bg); }
+
+/* ── ANIMATIONS ── */
+.fade-in { animation: fadeIn 0.5s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+
+/* ── INSIGHTS ── */
+.insights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2.5rem; }
+.insight-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+}
+.insight-card-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--accent); font-weight: 600; margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 8px;
+}
+.insight-item {
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text-muted); line-height: 1.6;
+}
+.insight-item:last-child { border-bottom: none; }
+.insight-item strong { color: var(--cream); font-weight: 600; }
+.insight-highlight {
+  color: var(--accent); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 500;
+}
+
+/* ── AI BRIEF ── */
+.ai-section {
+  background: linear-gradient(135deg, rgba(200,164,110,0.06) 0%, rgba(96,165,250,0.04) 100%);
+  border: 1px solid var(--accent-dim); border-radius: var(--radius-lg);
+  padding: 1.5rem; margin-bottom: 2.5rem;
+}
+.ai-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.ai-title {
+  font-family: 'Instrument Serif', serif; font-size: 18px; color: var(--cream);
+  display: flex; align-items: center; gap: 10px;
+}
+.ai-sparkle { color: var(--accent); font-size: 14px; }
+.ai-btn {
+  font-family: 'Instrument Sans', sans-serif; font-size: 12px; font-weight: 600;
+  padding: 8px 20px; border-radius: 6px; border: 1px solid var(--accent);
+  background: var(--accent-dim); color: var(--accent); cursor: pointer;
+  transition: all 0.2s;
+}
+.ai-btn:hover { background: var(--accent); color: var(--bg); }
+.ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ai-content {
+  font-size: 14px; color: var(--text-muted); line-height: 1.8;
+  white-space: pre-wrap;
+}
+.ai-content p { margin-bottom: 12px; }
+.ai-content strong { color: var(--cream); }
+.ai-setup {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  font-size: 12px; color: var(--text-dim);
+}
+.ai-setup input {
+  padding: 7px 12px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; width: 320px;
+}
+.ai-setup input:focus { outline: none; border-color: var(--accent); }
+
+/* ── NOTABLE EMAILS ── */
+.notable-row {
+  display: grid; grid-template-columns: 100px 140px 1fr;
+  gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px; align-items: start;
+}
+.notable-row:last-child { border-bottom: none; }
+.notable-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); padding-top: 2px; }
+.notable-brand { font-weight: 600; color: var(--text); }
+.notable-subject { color: var(--text-muted); }
+.notable-note { font-size: 12px; color: var(--text-dim); font-style: italic; margin-top: 4px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .chart-grid { grid-template-columns: 1fr; }
+  .promo-card { grid-template-columns: 1fr 1fr; gap: 8px; }
+}
+@media (max-width: 600px) {
+  .container { padding: 1.5rem 1rem; }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .promo-card { grid-template-columns: 1fr; }
+  .topbar { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- TOPBAR -->
+  <div class="topbar fade-in">
+    <div class="logo">
+      <h1>Promo Intelligence</h1>
+      <span class="tag">Live</span>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><span class="status-dot"></span><span id="statusText">Connecting...</span></div>
+      <button class="btn" onclick="fetchAndRender()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading-screen" id="loadingState">
+    <div class="loader"></div>
+    <div class="loading-text">Pulling latest competitor data...</div>
+  </div>
+
+  <!-- FALLBACK -->
+  <div id="fallbackState" style="display:none;">
+    <div class="fallback-card">
+      <h3>Local file detected</h3>
+      <p>Your browser blocks Google Sheets requests when opening HTML files directly. Two quick fixes:</p>
+      <p><strong>Option A</strong> — Run a local server (paste in terminal):<br>
+        <code>python3 -m http.server 8000</code><br>
+        Then open <code>http://localhost:8000</code></p>
+      <p><strong>Option B</strong> — Paste your data directly. Open <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vSYVLZ_sh_Txg2VU03uIgI2qBOK7lOfLOX2U5r5No9DV1UqWjW9Jr66B8lwcNSFrw5XPKkTLnIjMagy/pub?output=csv" target="_blank" style="color:var(--accent);">this CSV link</a> in a new tab, select all, copy, paste below:</p>
+      <textarea id="csvPaste" placeholder="Paste CSV data here..."></textarea>
+      <button class="btn" onclick="loadFromPaste()">Load dashboard</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" style="display:none;">
+
+    <div class="filters-row fade-in stagger-1">
+      <select class="filter-select" id="brandFilter"><option value="all">All brands</option></select>
+      <select class="filter-select" id="offerFilter"><option value="all">All offer types</option></select>
+      <select class="filter-select" id="timeFilter">
+        <option value="all">All time</option>
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30" selected>Last 30 days</option>
+      </select>
+    </div>
+
+    <div class="metrics-grid fade-in stagger-2" id="metrics"></div>
+
+    <!-- AI BRIEF -->
+    <div class="ai-section fade-in stagger-2" id="aiSection">
+      <div class="ai-header">
+        <div class="ai-title"><span class="ai-sparkle">&#10024;</span> Competitive intelligence brief</div>
+        <button class="ai-btn" id="aiBtn" onclick="generateAIBrief()">Generate with Claude</button>
+      </div>
+      <div class="ai-setup" id="aiSetup">
+        <span>API key:</span>
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-..." value="">
+        <span style="color:var(--text-dim);">Stored locally, never sent to GitHub</span>
+      </div>
+      <div class="ai-content" id="aiContent">
+        <p style="color:var(--text-dim);">Click "Generate with Claude" to get an AI-powered competitive analysis of the latest promo data. You'll need an Anthropic API key.</p>
+      </div>
+    </div>
+
+    <!-- AUTO INSIGHTS -->
+    <div class="insights-grid fade-in stagger-3" id="insightsGrid">
+      <div class="insight-card">
+        <div class="insight-card-title">&#9889; Key patterns</div>
+        <div id="patternInsights"></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-card-title">&#128200; Notable activity</div>
+        <div id="activityInsights"></div>
+      </div>
+    </div>
+
+    <div class="section fade-in stagger-3">
+      <div class="section-header">
+        <div class="section-title">Active promos</div>
+        <span class="section-badge" id="activeCount">0 live</span>
+      </div>
+      <div class="promo-grid" id="activePromos"></div>
+    </div>
+
+    <div class="chart-grid fade-in stagger-4">
+      <div class="chart-card">
+        <div class="chart-card-title">Promo frequency by brand</div>
+        <div class="chart-container" style="height:360px;"><canvas id="brandChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Avg promo duration (days)</div>
+        <div class="chart-container" style="height:360px;"><canvas id="durationChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-card-title">Offer type breakdown</div>
+        <div class="chart-legend" id="pieLegend"></div>
+        <div class="chart-container" style="height:240px;"><canvas id="offerChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Email volume (last 30 days)</div>
+        <div class="chart-container" style="height:260px;"><canvas id="timeChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Notable recent emails</div>
+      </div>
+      <div class="insight-card" style="margin-bottom:2.5rem;">
+        <div id="notableEmails"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">All promo runs</div>
+      </div>
+      <div class="table-wrap" id="runsTableWrap"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSYVLZ_sh_Txg2VU03uIgI2qBOK7lOfLOX2U5r5No9DV1UqWjW9Jr66B8lwcNSFrw5XPKkTLnIjMagy/pub?output=csv';
+const TODAY = new Date().toISOString().slice(0,10);
+
+const TYPE_STYLES = {
+  percentage_off:     { bg:'rgba(96,165,250,0.12)', color:'#60a5fa', label:'% off' },
+  free_shipping:      { bg:'rgba(52,211,153,0.12)', color:'#34d399', label:'free ship' },
+  gift_with_purchase: { bg:'rgba(244,114,182,0.12)', color:'#f472b6', label:'GWP' },
+  flash_sale:         { bg:'rgba(251,191,36,0.12)',  color:'#fbbf24', label:'flash' },
+  flat_off:           { bg:'rgba(200,164,110,0.15)', color:'#c8a46e', label:'flat off' },
+  other:              { bg:'rgba(255,255,255,0.06)', color:'#a1a1aa', label:'other' },
+  none:               { bg:'rgba(255,255,255,0.04)', color:'#63636e', label:'none' },
+};
+
+const CHART_COLORS = ['#60a5fa','#34d399','#c8a46e','#f472b6','#a78bfa','#fbbf24','#f87171','#818cf8','#38bdf8','#fb923c','#4ade80','#e879f9','#94a3b8','#a3e635'];
+
+let allEmails = [], brandChartInst, offerChartInst, durationChartInst, timeChartInst;
+
+/* ═══ FETCH WITH CORS FALLBACKS ═══ */
+async function fetchCSV() {
+  const targets = [
+    SHEET_URL + '&_t=' + Date.now(),
+    'https://corsproxy.io/?' + encodeURIComponent(SHEET_URL),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(SHEET_URL),
+  ];
+  for (const url of targets) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (r.ok) { const t = await r.text(); if (t.includes('Date') && t.includes('Competitor')) return t; }
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function fetchAndRender() {
+  document.getElementById('loadingState').style.display = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('fallbackState').style.display = 'none';
+  document.getElementById('statusText').textContent = 'Connecting...';
+
+  const csv = await fetchCSV();
+  if (!csv) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('fallbackState').style.display = 'block';
+    document.getElementById('statusText').textContent = 'Offline';
+    return;
+  }
+  processCSV(csv);
+}
+
+function loadFromPaste() {
+  const csv = document.getElementById('csvPaste').value.trim();
+  if (!csv) return;
+  document.getElementById('fallbackState').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'flex';
+  processCSV(csv);
+}
+
+function processCSV(csv) {
+  Papa.parse(csv, {
+    header: true, skipEmptyLines: true,
+    complete(results) {
+      allEmails = results.data.filter(r => r.Date && r.Competitor).map(r => ({
+        date: (r.Date||'').slice(0,10),
+        brand: (r.Competitor||'').trim(),
+        type: (r['Offer Type']||'none').trim().toLowerCase(),
+        discount: (r.Discount||'').trim(),
+        subject: (r.Subject||'').trim(),
+        urgency: (r['Urgency Language']||'').trim(),
+        notes: (r.Notes||'').trim(),
+        audience: (r.Audience||'').trim(),
+        promoCode: (r['Promo Code']||'').trim(),
+      }));
+
+      // Remove all free shipping / complimentary shipping entries
+      allEmails = allEmails.filter(e => {
+        if (e.type === 'free_shipping') return false;
+        const disc = (e.discount||'').toLowerCase();
+        if (disc.includes('free ship') || disc.includes('complimentary ship') || disc.includes('free delivery')) return false;
+        return true;
+      });
+      populateFilters();
+      render();
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      const now = new Date();
+      document.getElementById('statusText').textContent =
+        'Synced ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+  });
+}
+
+/* ═══ FILTERS ═══ */
+function populateFilters() {
+  const bS = document.getElementById('brandFilter'), oS = document.getElementById('offerFilter');
+  bS.innerHTML = '<option value="all">All brands</option>';
+  oS.innerHTML = '<option value="all">All offer types</option>';
+  [...new Set(allEmails.map(e=>e.brand))].sort().forEach(b => {
+    bS.innerHTML += `<option value="${b}">${b}</option>`;
+  });
+  [...new Set(allEmails.filter(e=>e.type!=='none').map(e=>e.type))].sort().forEach(t => {
+    oS.innerHTML += `<option value="${t}">${t.replace(/_/g,' ')}</option>`;
+  });
+}
+
+['brandFilter','offerFilter','timeFilter'].forEach(id =>
+  document.getElementById(id).addEventListener('change', render));
+
+function getFiltered() {
+  let d = [...allEmails];
+  const bv = document.getElementById('brandFilter').value;
+  const ov = document.getElementById('offerFilter').value;
+  const tv = document.getElementById('timeFilter').value;
+  if (bv!=='all') d = d.filter(e=>e.brand===bv);
+  if (ov!=='all') d = d.filter(e=>e.type===ov);
+  if (tv!=='all') {
+    const cut = new Date(TODAY); cut.setDate(cut.getDate()-parseInt(tv));
+    const cs = cut.toISOString().slice(0,10);
+    d = d.filter(e=>e.date>=cs);
+  }
+  return d;
+}
+
+/* ═══ PROMO RUN ENGINE ═══ */
+function buildRuns(data) {
+  const promos = data.filter(e=>e.type!=='none');
+  const groups = {};
+  promos.forEach(e => {
+    const k = e.brand+'||'+e.type+'||'+(e.discount||'').toLowerCase().replace(/[^a-z0-9%$ ]/g,'').trim();
+    if (!groups[k]) groups[k] = new Set();
+    groups[k].add(e.date);
+  });
+  const runs = [];
+  Object.entries(groups).forEach(([key, dateSet]) => {
+    const sorted = [...dateSet].sort();
+    let start=sorted[0], prev=sorted[0];
+    for (let i=1; i<=sorted.length; i++) {
+      const cur=sorted[i];
+      const gap = cur ? (new Date(cur)-new Date(prev))/864e5 : 999;
+      if (gap>2) {
+        const [brand,type,disc] = key.split('||');
+        const days = Math.round((new Date(prev)-new Date(start))/864e5)+1;
+        runs.push({brand,type,discount:disc,start,end:prev,days,active:prev>=TODAY});
+        if (cur) {start=cur; prev=cur;}
+      } else prev=cur;
+    }
+  });
+  return runs.sort((a,b)=>b.start.localeCompare(a.start));
+}
+
+/* ═══ RENDER ═══ */
+function render() {
+  const data = getFiltered();
+  const promos = data.filter(e=>e.type!=='none');
+  const runs = buildRuns(data);
+  const active = runs.filter(r=>r.active);
+  const brands = new Set(data.map(e=>e.brand)).size;
+  const avgDur = runs.length ? (runs.reduce((s,r)=>s+r.days,0)/runs.length).toFixed(1) : '—';
+  const promoRate = data.length ? Math.round(promos.length/data.length*100) : 0;
+
+  // Metrics
+  document.getElementById('metrics').innerHTML = [
+    {l:'Emails tracked', v:data.length, s:`${brands} brands`},
+    {l:'Promo emails', v:promos.length, s:`${promoRate}% promo rate`},
+    {l:'Promo runs', v:runs.length, s:`Grouped instances`},
+    {l:'Avg duration', v:avgDur, s:'Days per run'},
+    {l:'Active now', v:active.length, s:TODAY},
+  ].map(m=>`<div class="metric"><div class="metric-label">${m.l}</div><div class="metric-value">${m.v}</div><div class="metric-sub">${m.s}</div></div>`).join('');
+
+  document.getElementById('activeCount').textContent = active.length + ' live';
+
+  // Active promos
+  const ap = document.getElementById('activePromos');
+  if (!active.length) {
+    ap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text-dim);font-size:13px;">No active promos in current filter</div>';
+  } else {
+    ap.innerHTML = active.map(r => {
+      const st = TYPE_STYLES[r.type]||TYPE_STYLES.other;
+      return `<div class="promo-card">
+        <div class="promo-brand">${r.brand}</div>
+        <span class="promo-tag" style="background:${st.bg};color:${st.color};">${st.label}</span>
+        <div class="promo-discount">${r.discount||'—'}</div>
+        <div class="promo-duration">${r.days}d</div>
+        <div class="promo-dates">${r.start} → ${r.end}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Brand chart
+  const bc = {}; runs.forEach(r=>{bc[r.brand]=(bc[r.brand]||0)+1;});
+  const sb = Object.entries(bc).sort((a,b)=>b[1]-a[1]);
+  if (brandChartInst) brandChartInst.destroy();
+  brandChartInst = new Chart(document.getElementById('brandChart'), {
+    type:'bar',
+    data:{labels:sb.map(b=>b[0]),datasets:[{data:sb.map(b=>b[1]),
+      backgroundColor:sb.map((_,i)=>CHART_COLORS[i%CHART_COLORS.length]),borderRadius:4,barThickness:22}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#63636e',font:{family:'Instrument Sans'}}},
+        y:{grid:{display:false},ticks:{color:'#a1a1aa',font:{family:'Instrument Sans',size:12,weight:500}}}}}
+  });
+
+  // Duration chart
+  const bd = {}; runs.forEach(r=>{if(!bd[r.brand])bd[r.brand]=[];bd[r.brand].push(r.days);});
+  const avgB = Object.entries(bd).map(([b,ds])=>[b,Math.round(ds.reduce((a,d)=>a+d,0)/ds.length*10)/10]).sort((a,b)=>b[1]-a[1]);
+  if (durationChartInst) durationChartInst.destroy();
+  durationChartInst = new Chart(document.getElementById('durationChart'), {
+    type:'bar',
+    data:{labels:avgB.map(b=>b[0]),datasets:[{data:avgB.map(b=>b[1]),backgroundColor:'#c8a46e',borderRadius:4,barThickness:22}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#63636e',font:{family:'Instrument Sans'}}},
+        y:{grid:{display:false},ticks:{color:'#a1a1aa',font:{family:'Instrument Sans',size:12,weight:500}}}}}
+  });
+
+  // Offer type donut
+  const tc = {}; promos.forEach(e=>{tc[e.type]=(tc[e.type]||0)+1;});
+  const te = Object.entries(tc).sort((a,b)=>b[1]-a[1]);
+  const tot = te.reduce((s,e)=>s+e[1],0);
+  document.getElementById('pieLegend').innerHTML = te.map(([t,c])=>{
+    const st=TYPE_STYLES[t]||TYPE_STYLES.other;
+    return `<span><span class="legend-dot" style="background:${st.color};"></span>${st.label} ${Math.round(c/tot*100)}%</span>`;
+  }).join('');
+  if (offerChartInst) offerChartInst.destroy();
+  offerChartInst = new Chart(document.getElementById('offerChart'), {
+    type:'doughnut',
+    data:{labels:te.map(e=>(TYPE_STYLES[e[0]]||TYPE_STYLES.other).label),
+      datasets:[{data:te.map(e=>e[1]),backgroundColor:te.map(e=>(TYPE_STYLES[e[0]]||TYPE_STYLES.other).color),borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}
+  });
+
+  // Time series
+  const dateCounts = {};
+  const last30 = new Date(TODAY); last30.setDate(last30.getDate()-30);
+  promos.filter(e=>new Date(e.date)>=last30).forEach(e=>{dateCounts[e.date]=(dateCounts[e.date]||0)+1;});
+  const dates = Object.keys(dateCounts).sort();
+  if (timeChartInst) timeChartInst.destroy();
+  timeChartInst = new Chart(document.getElementById('timeChart'), {
+    type:'line',
+    data:{labels:dates.map(d=>d.slice(5)),datasets:[{data:dates.map(d=>dateCounts[d]),
+      borderColor:'#60a5fa',backgroundColor:'rgba(96,165,250,0.08)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#60a5fa',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#63636e',font:{family:'JetBrains Mono',size:10},maxRotation:45}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#63636e',font:{family:'JetBrains Mono',size:10},stepSize:1}}}}
+  });
+
+  // Runs table
+  const recent = runs.slice(0,60);
+  document.getElementById('runsTableWrap').innerHTML = `<table class="data-table">
+    <thead><tr><th>Brand</th><th>Type</th><th>Discount</th><th>Start</th><th>End</th><th style="text-align:right;">Days</th><th>Status</th></tr></thead>
+    <tbody>${recent.map(r=>{
+      const st=TYPE_STYLES[r.type]||TYPE_STYLES.other;
+      return `<tr>
+        <td class="brand-cell">${r.brand}</td>
+        <td><span class="promo-tag" style="background:${st.bg};color:${st.color};">${st.label}</span></td>
+        <td>${r.discount||'—'}</td>
+        <td class="mono">${r.start}</td>
+        <td class="mono">${r.end}</td>
+        <td class="mono" style="text-align:right;color:var(--cream);font-weight:500;">${r.days}</td>
+        <td>${r.active?'<span class="live-badge">Live</span>':'<span class="ended-badge">Ended</span>'}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+
+  renderInsights(data, promos, runs, active);
+  renderNotableEmails(data);
+}
+
+/* ═══ AUTO-GENERATED INSIGHTS ═══ */
+function renderInsights(data, promos, runs, active) {
+  const patterns = [];
+  const activity = [];
+
+  // Heaviest promoter
+  const brandPromoCount = {};
+  promos.forEach(e => { brandPromoCount[e.brand] = (brandPromoCount[e.brand]||0)+1; });
+  const heaviest = Object.entries(brandPromoCount).sort((a,b)=>b[1]-a[1]);
+  if (heaviest.length) {
+    patterns.push(`<strong>${heaviest[0][0]}</strong> is the heaviest promoter with <span class="insight-highlight">${heaviest[0][1]} promo emails</span> in this period — ${Math.round(heaviest[0][1]/promos.length*100)}% of all promotional sends.`);
+  }
+
+  // Longest active run
+  if (active.length) {
+    const longest = [...active].sort((a,b)=>b.days-a.days)[0];
+    patterns.push(`Longest active promo: <strong>${longest.brand}</strong> has been running ${longest.discount||longest.type.replace(/_/g,' ')} for <span class="insight-highlight">${longest.days} consecutive days</span>.`);
+  }
+
+  // Urgency language analysis
+  const urgencyEmails = data.filter(e => e.urgency && e.urgency.length > 2);
+  if (urgencyEmails.length) {
+    const urgBrands = {};
+    urgencyEmails.forEach(e => { urgBrands[e.brand] = (urgBrands[e.brand]||0)+1; });
+    const topUrg = Object.entries(urgBrands).sort((a,b)=>b[1]-a[1])[0];
+    patterns.push(`<strong>${topUrg[0]}</strong> uses urgency language most aggressively — <span class="insight-highlight">${topUrg[1]} emails</span> with phrases like "${urgencyEmails.filter(e=>e.brand===topUrg[0]).slice(-1)[0]?.urgency}".`);
+  }
+
+  // Brands NOT promoting (content only)
+  const allBrands = [...new Set(data.map(e=>e.brand))];
+  const promoBrands = new Set(promos.map(e=>e.brand));
+  const quietBrands = allBrands.filter(b => !promoBrands.has(b));
+  if (quietBrands.length) {
+    patterns.push(`<strong>${quietBrands.join(', ')}</strong> sent only content/product emails — zero promotional offers in this period.`);
+  } else {
+    // Find least promotional
+    const least = heaviest[heaviest.length-1];
+    if (least) patterns.push(`<strong>${least[0]}</strong> is the most restrained — only <span class="insight-highlight">${least[1]} promo emails</span> vs. ${heaviest[0][1]} from ${heaviest[0][0]}.`);
+  }
+
+  // Discount depth trends
+  const pctOffs = promos.filter(e => e.type==='percentage_off' && e.discount);
+  if (pctOffs.length) {
+    const brandMaxDiscount = {};
+    pctOffs.forEach(e => {
+      const num = parseInt((e.discount.match(/(\d+)/)||[])[1]) || 0;
+      if (!brandMaxDiscount[e.brand] || num > brandMaxDiscount[e.brand]) brandMaxDiscount[e.brand] = num;
+    });
+    const deepest = Object.entries(brandMaxDiscount).sort((a,b)=>b[1]-a[1])[0];
+    if (deepest) activity.push(`Deepest discount spotted: <strong>${deepest[0]}</strong> at <span class="insight-highlight">${deepest[1]}% off</span> — signals clearance pressure or aggressive customer acquisition.`);
+  }
+
+  // GWP strategy
+  const gwpBrands = [...new Set(promos.filter(e=>e.type==='gift_with_purchase').map(e=>e.brand))];
+  if (gwpBrands.length) {
+    activity.push(`<strong>${gwpBrands.join(', ')}</strong> ${gwpBrands.length===1?'is':'are'} using gift-with-purchase instead of straight discounts — protects margin while driving AOV.`);
+  }
+
+  // Free shipping as always-on
+  const fsBrands = {};
+  promos.filter(e=>e.type==='free_shipping').forEach(e=>{fsBrands[e.brand]=(fsBrands[e.brand]||0)+1;});
+  const alwaysOnFS = Object.entries(fsBrands).filter(([b,c])=>c>=10);
+  if (alwaysOnFS.length) {
+    activity.push(`<strong>${alwaysOnFS.map(e=>e[0]).join(', ')}</strong> ${alwaysOnFS.length===1?'treats':'treat'} free shipping as an always-on baseline — not really a "promo" for competitive comparison.`);
+  }
+
+  // Audience targeting
+  const insiderEmails = data.filter(e => e.audience && e.audience.toLowerCase().includes('insider'));
+  if (insiderEmails.length) {
+    const insiderBrands = [...new Set(insiderEmails.map(e=>e.brand))];
+    activity.push(`<strong>${insiderBrands.join(', ')}</strong> ${insiderBrands.length===1?'is':'are'} running loyalty-gated promos (Insiders/VIP only) — segmenting offers to protect public pricing.`);
+  }
+
+  // Email frequency
+  const emailsPerDay = {};
+  data.forEach(e=>{emailsPerDay[e.brand]=(emailsPerDay[e.brand]||0)+1;});
+  const dates = [...new Set(data.map(e=>e.date))];
+  const daySpan = dates.length || 1;
+  const freqEntries = Object.entries(emailsPerDay).map(([b,c])=>[b, Math.round(c/daySpan*7*10)/10]).sort((a,b)=>b[1]-a[1]);
+  if (freqEntries.length >= 2) {
+    activity.push(`Email cadence: <strong>${freqEntries[0][0]}</strong> sends ~<span class="insight-highlight">${freqEntries[0][1]} emails/week</span> vs. <strong>${freqEntries[freqEntries.length-1][0]}</strong> at ~${freqEntries[freqEntries.length-1][1]}/week.`);
+  }
+
+  document.getElementById('patternInsights').innerHTML = patterns.length
+    ? patterns.map(p=>`<div class="insight-item">${p}</div>`).join('')
+    : '<div class="insight-item" style="color:var(--text-dim);">Not enough data for pattern detection.</div>';
+
+  document.getElementById('activityInsights').innerHTML = activity.length
+    ? activity.map(a=>`<div class="insight-item">${a}</div>`).join('')
+    : '<div class="insight-item" style="color:var(--text-dim);">Not enough data for activity insights.</div>';
+}
+
+/* ═══ NOTABLE EMAILS ═══ */
+function renderNotableEmails(data) {
+  const notable = data
+    .filter(e => e.notes && e.notes.length > 10)
+    .sort((a,b) => b.date.localeCompare(a.date))
+    .slice(0, 12);
+
+  const el = document.getElementById('notableEmails');
+  if (!notable.length) {
+    el.innerHTML = '<div style="padding:1rem;color:var(--text-dim);font-size:13px;">No notes found in the data.</div>';
+    return;
+  }
+  el.innerHTML = notable.map(e => `
+    <div class="notable-row">
+      <div class="notable-date">${e.date}</div>
+      <div class="notable-brand">${e.brand}</div>
+      <div>
+        <div class="notable-subject">${e.subject}</div>
+        <div class="notable-note">${e.notes}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ═══ AI BRIEF (Claude API) ═══ */
+function getApiKey() {
+  const input = document.getElementById('apiKeyInput');
+  let key = input.value.trim();
+  if (!key) key = localStorage.getItem('anthropic_api_key') || '';
+  if (key) { localStorage.setItem('anthropic_api_key', key); input.value = key; }
+  return key;
+}
+
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('anthropic_api_key');
+  if (saved) document.getElementById('apiKeyInput').value = saved;
+});
+
+async function generateAIBrief() {
+  const key = getApiKey();
+  if (!key) { alert('Please enter your Anthropic API key first.'); return; }
+
+  const btn = document.getElementById('aiBtn');
+  const content = document.getElementById('aiContent');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  content.innerHTML = '<p style="color:var(--text-dim);">Generating competitive intelligence brief...</p>';
+
+  const data = getFiltered();
+  const promos = data.filter(e=>e.type!=='none');
+  const runs = buildRuns(data);
+  const active = runs.filter(r=>r.active);
+
+  // Build a concise data summary for Claude
+  const brandSummary = {};
+  data.forEach(e => {
+    if (!brandSummary[e.brand]) brandSummary[e.brand] = {total:0,promos:0,types:{},subjects:[],notes:[],urgency:[]};
+    const bs = brandSummary[e.brand];
+    bs.total++;
+    if (e.type!=='none') { bs.promos++; bs.types[e.type]=(bs.types[e.type]||0)+1; }
+    if (e.subject) bs.subjects.push(e.date+': '+e.subject);
+    if (e.notes) bs.notes.push(e.notes);
+    if (e.urgency) bs.urgency.push(e.urgency);
+  });
+
+  let summaryText = `COMPETITOR EMAIL INTELLIGENCE DATA (${data[data.length-1]?.date || '?'} to ${data[0]?.date || '?'})\n\n`;
+  summaryText += `Total emails: ${data.length} | Promo emails: ${promos.length} | Active promos today: ${active.length}\n\n`;
+
+  Object.entries(brandSummary).forEach(([brand, bs]) => {
+    summaryText += `## ${brand}\n`;
+    summaryText += `Emails: ${bs.total} | Promos: ${bs.promos} (${Math.round(bs.promos/bs.total*100)}%)\n`;
+    summaryText += `Offer types: ${JSON.stringify(bs.types)}\n`;
+    summaryText += `Recent subjects: ${bs.subjects.slice(-5).join(' | ')}\n`;
+    if (bs.notes.length) summaryText += `Notes: ${bs.notes.slice(-3).join(' | ')}\n`;
+    if (bs.urgency.length) summaryText += `Urgency language: ${[...new Set(bs.urgency)].join(', ')}\n`;
+    summaryText += '\n';
+  });
+
+  summaryText += `## ACTIVE PROMO RUNS\n`;
+  active.forEach(r => {
+    summaryText += `${r.brand}: ${r.type} - ${r.discount||'n/a'} (${r.start} to ${r.end}, ${r.days} days)\n`;
+  });
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: `You are a competitive intelligence analyst for a fashion/apparel brand. Analyze this competitor email marketing data and write a brief (5-7 paragraphs) that a VP of Marketing would find actionable.
+
+Focus on:
+1. Who is promoting most aggressively and what that signals about their inventory/strategy
+2. Notable patterns in discount depth, urgency language, and timing
+3. Which brands are protecting margin (using GWP, loyalty-gating, or content-only) vs. racing to the bottom
+4. Any holiday/seasonal plays worth noting
+5. Strategic recommendations for how to position against these competitors
+
+Write in a direct, analytical tone. Use specific data points. No generic filler.
+
+DATA:
+${summaryText}` }]
+      })
+    });
+
+    const result = await response.json();
+    const text = result.content?.[0]?.text || 'No response received.';
+    content.innerHTML = text.split('\n').filter(l=>l.trim()).map(p => `<p>${p}</p>`).join('');
+  } catch (err) {
+    content.innerHTML = `<p style="color:var(--red);">Error: ${err.message}. Check your API key and try again.</p>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Generate with Claude';
+}
+
+/* ═══ AUTO-REFRESH ═══ */
+setInterval(()=>fetchAndRender(), 30*60*1000);
+fetchAndRender();
+</script>
+</body>
+</html>
